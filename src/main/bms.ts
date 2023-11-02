@@ -1,7 +1,9 @@
 import axios from 'axios';
 import fs from 'fs';
 import FormData from 'form-data';
-const apiUrl = "https://webhook.site/72b49f57-e259-4dbf-a07c-212230f9097b";
+
+const apiUploadUrl = "https://webhook.site/72b49f57-e259-4dbf-a07c-212230f9097b";
+const apiEndpointUrl = 'https://webhook.site/token/72b49f57-e259-4dbf-a07c-212230f9097b/requests';
 
 export function onAddNewBMS(path: string) {
     console.log('onAddNewBMS ==========', path);
@@ -9,7 +11,7 @@ export function onAddNewBMS(path: string) {
     const formData = new FormData();
     formData.append('file', fileStream);
     
-    axios.post(apiUrl, formData, {
+    axios.post(apiUploadUrl, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -29,7 +31,7 @@ export function onUpdateBMS(path: string) {
     formData.append('file', fileStream);
     formData.append('isUpdate', 'true');
     
-    axios.post(apiUrl, formData, {
+    axios.post(apiUploadUrl, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -44,4 +46,12 @@ export function onUpdateBMS(path: string) {
 
 export function onDelBMS(path: string) {
     console.log(`onDelBMS ------- ${path}`);
+}
+
+export function getFileHistory() {
+    return new Promise((resolve, reject) =>{
+        axios.get(apiEndpointUrl)
+            .then(res=>resolve(res.data))
+            .catch(err=> reject(err))
+    })
 }

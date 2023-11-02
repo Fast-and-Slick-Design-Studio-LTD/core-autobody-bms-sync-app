@@ -14,9 +14,9 @@ import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath, setSyncFolder } from './util';
-import { IPC_KEY } from '../keys';
+import { CHANNEL, IPC_KEY } from '../keys';
 import chokidar from 'chokidar';
-import { onAddNewBMS, onDelBMS, onUpdateBMS } from './bms';
+import { getFileHistory, onAddNewBMS, onDelBMS, onUpdateBMS } from './bms';
 
 class AppUpdater {
   constructor() {
@@ -52,6 +52,10 @@ ipcMain.on('ipc-example', async (event, arg) => {
     } else {
       event.reply('ipc-example', IPC_KEY.OPEN_FOLDER_CANCEL);
     }
+  }
+  if(arg == IPC_KEY.GET_FILE_HISTORY) {
+    let fileData: any = await getFileHistory();
+    event.reply(CHANNEL.FILE_HISTORY_REPLY, [fileData.data])
   }
 });
 

@@ -1,10 +1,11 @@
-import { MemoryRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './LogIn';
 import ChangeFolder from './ChangeFolder';
 import FileHistory from './FileHistory';
-import { Button, ChakraProvider, Container, HStack, List, ListItem, VStack } from '@chakra-ui/react';
+import { ChakraProvider } from '@chakra-ui/react';
 
 export default function App() {
+
   return (
     <ChakraProvider>
       <Router>

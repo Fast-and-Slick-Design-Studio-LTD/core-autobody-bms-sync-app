@@ -7,6 +7,7 @@ const apiEndpointUrl = 'https://webhook.site/token/72b49f57-e259-4dbf-a07c-21223
 
 export function onAddNewBMS(path: string) {
     console.log('onAddNewBMS ==========', path);
+    return;
     const fileStream = fs.createReadStream(path)
     const formData = new FormData();
     formData.append('file', fileStream);

@@ -12,7 +12,9 @@ const FileHistory = () => {
   useEffect(()=>{
     window.electron.ipcRenderer.sendMessage('ipc-example', [IPC_KEY.GET_FILE_HISTORY]);
     window.electron.ipcRenderer.on(CHANNEL.FILE_HISTORY_REPLY, (_items: any) => {
-      setItems(_items[0]);
+      setItems(_items.sort((a: any, b:any)=>{
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }));
       setLoading(false);
     })
   }, []);
@@ -25,19 +27,22 @@ const FileHistory = () => {
         {
           loading ? 
           <Stack>
-            <Skeleton height='20px' />
-            <Skeleton height='20px' />
-            <Skeleton height='20px' />
+            {
+              [1,2,3,4,5,6,7,8,9,10].map((val: number)=>(
+                <Skeleton key={val} height='20px' />
+              ))
+            }
           </Stack>
           :
           <TableContainer>
-            <Table variant='simple'>
+            <Table variant='striped'>
               <TableCaption>File add/update logs</TableCaption>
               <Thead>
                 <Tr>
                   <Th>No</Th>
                   <Th>File</Th>
                   <Th>Size</Th>
+                  <Th>Action</Th>
                   <Th>Date/Time</Th>
                 </Tr>
               </Thead>
@@ -48,7 +53,8 @@ const FileHistory = () => {
                       <Td>{key + 1}</Td>
                       <Td>{ item.files?.file ? item.files?.file?.filename : 'None'}</Td>
                       <Td>{ item.files?.file ? item.files?.file?.size + ' Byte' : ''}</Td>
-                      <Td>{item.created_at}</Td>
+                      <Td>{ item.request && item.request.isUpdate == 'true' ? 'Updated' : 'Added' }</Td>
+                      <Td>{ item.created_at }</Td>
                     </Tr>
                   ))
                 }

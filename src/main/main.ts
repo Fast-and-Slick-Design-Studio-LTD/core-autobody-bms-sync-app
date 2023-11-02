@@ -17,6 +17,8 @@ import { resolveHtmlPath, setSyncFolder } from './util';
 import { CHANNEL, IPC_KEY } from '../keys';
 import chokidar from 'chokidar';
 import { getFileHistory, onAddNewBMS, onDelBMS, onUpdateBMS } from './bms';
+import fs from 'fs';
+import schedule from 'node-schedule';
 
 class AppUpdater {
   constructor() {
@@ -27,35 +29,52 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
-
 let watcher: any = null;
 
+const BMS_FOLDER_TEXT_FILE = path.join(__dirname, 'bmsfolder.txt');
+
 ipcMain.on('ipc-example', async (event, arg) => {
-  if(arg == IPC_KEY.OPEN_FOLDER) {
-    let dlgs: string[] = setSyncFolder();
-    if(dlgs[0]) {
-      event.reply('ipc-example', IPC_KEY.OPEN_FOLDER_SUCCESS);
-
-      if (watcher) {
-        await (watcher as chokidar.FSWatcher).close();
+  switch(arg[0]) {
+    case IPC_KEY.OPEN_FOLDER:
+      {
+        let dlgs: string[] = setSyncFolder();
+        if(dlgs[0]) {
+          fs.writeFileSync(BMS_FOLDER_TEXT_FILE, dlgs[0]);
+          event.reply(CHANNEL.BMS_FOLDER_REPLY, [dlgs[0]]);
+          // initialize watcher
+          await initializeWatcher(dlgs[0]);
+        } else {
+          event.reply('ipc-example', IPC_KEY.OPEN_FOLDER_CANCEL);
+        }
+        break;
       }
-      watcher = chokidar.watch(dlgs[0], {
-        ignored: /(^|[\/\\])\../, // ignore dotfiles
-        persistent: true
-      });
-
-      watcher
-        .on('add', (_path: string)=> onAddNewBMS(_path))
-        .on('change', (_path: string)=> onUpdateBMS(_path))
-        .on('unlink', (_path: string)=> onDelBMS(_path))
-      
-    } else {
-      event.reply('ipc-example', IPC_KEY.OPEN_FOLDER_CANCEL);
-    }
-  }
-  if(arg == IPC_KEY.GET_FILE_HISTORY) {
-    let fileData: any = await getFileHistory();
-    event.reply(CHANNEL.FILE_HISTORY_REPLY, [fileData.data])
+    case IPC_KEY.GET_FILE_HISTORY:
+      {
+        let fileData: any = await getFileHistory();
+        event.reply(CHANNEL.FILE_HISTORY_REPLY, fileData.data)
+        break;
+      }
+    case IPC_KEY.GET_BMS_FOLDER:
+      {
+        if (fs.existsSync(BMS_FOLDER_TEXT_FILE)) {
+          let bmsFolder = fs.readFileSync(BMS_FOLDER_TEXT_FILE);
+          await initializeWatcher(bmsFolder.toString());
+          event.reply(CHANNEL.BMS_FOLDER_REPLY, bmsFolder.toString());
+        }else{
+          event.reply(CHANNEL.BMS_FOLDER_REPLY, 'Not Set');
+        }
+        break;
+      }
+    case IPC_KEY.CHECK_BMS_FOLDER:
+      if (fs.existsSync(BMS_FOLDER_TEXT_FILE)) {
+        let bmsFolder = fs.readFileSync(BMS_FOLDER_TEXT_FILE);
+        if (!fs.existsSync(bmsFolder)) {
+          mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
+        }
+      }
+      break;
+    default:
+      break;
   }
 });
 
@@ -140,6 +159,40 @@ const createWindow = async () => {
   // eslint-disable-next-line
   new AppUpdater();
 };
+
+// initialize watcher
+const initializeWatcher = async (folder: string) => {
+  if (!fs.existsSync(folder)) {
+    mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
+    return;
+  }
+  if (watcher) {
+    await (watcher as chokidar.FSWatcher).close();
+  }
+  watcher = chokidar.watch(folder, {
+    ignored: /(^|[\/\\])\../, // ignore dotfiles
+    persistent: true
+  });
+
+  watcher
+    .on('add', (_path: string)=> onAddNewBMS(_path))
+    .on('change', (_path: string)=> onUpdateBMS(_path))
+    .on('unlink', (_path: string)=> onDelBMS(_path))
+    .on('error', (error: string)=> {
+      mainWindow?.webContents.send('error', error);
+    });
+}
+
+// cron job
+schedule.scheduleJob('*/5 * * * * *', async ()=> {
+  
+  if (fs.existsSync(BMS_FOLDER_TEXT_FILE)) {
+    let bmsFolder = fs.readFileSync(BMS_FOLDER_TEXT_FILE);
+    if (!fs.existsSync(bmsFolder)) {
+      mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
+    }
+  }
+})
 
 /**
  * Add event listeners...

@@ -9,10 +9,9 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, nativeImage, Tray, Menu } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-import MenuBuilder from './menu';
 import { resolveHtmlPath, setSyncFolder } from './util';
 import { CHANNEL, IPC_KEY } from '../keys';
 import chokidar from 'chokidar';
@@ -28,8 +27,14 @@ class AppUpdater {
   }
 }
 
+const RESOURCES_PATH = app.isPackaged
+    ? path.join(process.resourcesPath, 'assets')
+    : path.join(__dirname, '../../assets');
+
+
 let mainWindow: BrowserWindow | null = null;
 let watcher: any = null;
+let tray: any = null;
 
 const BMS_FOLDER_TEXT_FILE = path.join(__dirname, 'bmsfolder.txt');
 
@@ -90,6 +95,28 @@ if (isDebug) {
   require('electron-debug')();
 }
 
+const createTray = () => {
+  const icon = getAssetPath('icon.png') // required.
+  const trayicon = nativeImage.createFromPath(icon)
+  tray = new Tray(trayicon.resize({ width: 16 }))
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show App',
+      click: () => {
+        createWindow()
+      }
+    },
+    {
+      label: 'Quit',
+      click: () => {
+        app.quit() // actually quit the app.
+      }
+    },
+  ])
+
+  tray.setContextMenu(contextMenu)
+}
+
 const installExtensions = async () => {
   const installer = require('electron-devtools-installer');
   const forceDownload = !!process.env.UPGRADE_EXTENSIONS;
@@ -103,18 +130,18 @@ const installExtensions = async () => {
     .catch(console.log);
 };
 
+
+const getAssetPath = (...paths: string[]): string => {
+    return path.join(RESOURCES_PATH, ...paths);
+};
+
 const createWindow = async () => {
+  if (!tray) {
+    createTray();
+  }
   if (isDebug) {
     await installExtensions();
   }
-
-  const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
-  const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
-  };
 
   mainWindow = new BrowserWindow({
     show: false,
@@ -201,11 +228,15 @@ schedule.scheduleJob('*/5 * * * * *', async ()=> {
 app.on('window-all-closed', async () => {
   // Respect the OSX convention of having the application in memory even
   // after all windows have been closed
+  console.log('window-all-closed', process.platform);
   if (process.platform !== 'darwin') {
-    app.quit();
+    // app.quit();
+    app.dock.hide();
     if (watcher) {
       await (watcher as chokidar.FSWatcher).close();
     }
+  } else {
+    app.dock.hide();
   }
 });
 

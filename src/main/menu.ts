@@ -4,9 +4,6 @@ import {
   Menu,
   BrowserWindow,
   MenuItemConstructorOptions,
-  dialog,
-  ipcMain,
-  webContents,
 } from 'electron';
 import { setSyncFolder } from './util';
 import { IPC_KEY } from '../keys';

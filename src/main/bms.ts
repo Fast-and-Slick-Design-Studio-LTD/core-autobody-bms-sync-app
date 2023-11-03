@@ -6,8 +6,6 @@ const apiUploadUrl = "https://webhook.site/72b49f57-e259-4dbf-a07c-212230f9097b"
 const apiEndpointUrl = 'https://webhook.site/token/72b49f57-e259-4dbf-a07c-212230f9097b/requests';
 
 export function onAddNewBMS(path: string) {
-    console.log('onAddNewBMS ==========', path);
-    return;
     const fileStream = fs.createReadStream(path)
     const formData = new FormData();
     formData.append('file', fileStream);
@@ -26,7 +24,6 @@ export function onAddNewBMS(path: string) {
 }
 
 export function onUpdateBMS(path: string) {
-    console.log(`onUpdateBMS ------- ${path}`);
     const fileStream = fs.createReadStream(path)
     const formData = new FormData();
     formData.append('file', fileStream);

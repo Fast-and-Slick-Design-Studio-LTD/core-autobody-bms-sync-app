@@ -35,11 +35,9 @@ const Login : React.FC = (props) => {
   useEffect(()=>{
     window.electron.ipcRenderer.sendMessage('ipc-send', [IPC_KEY.VERIFY_TOKEN_REQUEST]);
     window.electron.ipcRenderer.once(CHANNEL.VERIFY_TOKEN_REPLY, (res: any)=>{
+      setVerifying(false);
       if (res) {
-        setVerifying(false);
         navigate('ChangeFolder');
-      } else {
-        setVerifying(true);
       }
     });
   }, []);

@@ -135,6 +135,6 @@ export default class MenuBuilder {
 
   // eslint-disable-next-line class-methods-use-this
   logOut() {
-    this.mainWindow.webContents.send('ipc-example', [IPC_KEY.LOGOUT])
+    this.mainWindow.webContents.send('ipc-send', [IPC_KEY.LOGOUT])
   }
 }

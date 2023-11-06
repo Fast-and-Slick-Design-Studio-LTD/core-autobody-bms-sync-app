@@ -1,8 +1,18 @@
-import { Button, HStack, useColorModeValue } from "@chakra-ui/react";
+import { Button, HStack, useColorModeValue, useToast } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
+import { IPC_KEY } from "../keys";
 
 const Header = (props: any) => {
+    const toast = useToast();
     const onLogout = () => {
+        window.electron.ipcRenderer.sendMessage('ipc-send', [IPC_KEY.LOGOUT])
+        toast({
+            title: 'Authenticate',
+            description: "Signed out Successfully",
+            status: 'success',
+            duration: 2000,
+            isClosable: true,
+          })
         props.navigate('/');
     }
     return (

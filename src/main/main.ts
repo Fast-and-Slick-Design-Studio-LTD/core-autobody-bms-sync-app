@@ -18,7 +18,9 @@ import chokidar from 'chokidar';
 import { getFileHistory, onAddNewBMS, onDelBMS, onUpdateBMS } from './bms';
 import fs from 'fs';
 import schedule from 'node-schedule';
-import { loginByPwd } from './auth';
+import Store from 'electron-store';
+
+import { loginByPwd, verifyToken } from './auth';
 
 class AppUpdater {
   constructor() {
@@ -38,8 +40,9 @@ let watcher: any = null;
 let tray: any = null;
 
 const BMS_FOLDER_TEXT_FILE = path.join(__dirname, 'bmsfolder.txt');
+const store = new Store();
 
-ipcMain.on('ipc-example', async (event, arg) => {
+ipcMain.on('ipc-send', async (event, arg) => {
   switch(arg[0]) {
     case IPC_KEY.OPEN_FOLDER:
       {
@@ -50,7 +53,7 @@ ipcMain.on('ipc-example', async (event, arg) => {
           // initialize watcher
           await initializeWatcher(dlgs[0]);
         } else {
-          event.reply('ipc-example', IPC_KEY.OPEN_FOLDER_CANCEL);
+          event.reply('ipc-send', IPC_KEY.OPEN_FOLDER_CANCEL);
         }
         break;
       }
@@ -84,6 +87,34 @@ ipcMain.on('ipc-example', async (event, arg) => {
     case IPC_KEY.LOGIN_REQUEST:
       {
         let response: any = await loginByPwd(arg[1], arg[2]);
+        if(response.success) {
+          store.set('user_token', response.token);
+          event.reply(CHANNEL.LOGIN_REPLY, response)
+        } else {
+          event.reply(CHANNEL.LOGIN_REPLY, false)
+        }
+        break;
+      }
+    case IPC_KEY.VERIFY_TOKEN_REQUEST:
+      {
+        let token = store.get('user_token');
+        if (!token) {
+          event.reply(CHANNEL.VERIFY_TOKEN_REPLY, false);
+          break;
+        }
+        let response: any = await verifyToken(token);
+        console.log(IPC_KEY.VERIFY_TOKEN_REQUEST, response);
+        if (response.success) {
+          event.reply(CHANNEL.VERIFY_TOKEN_REPLY, true);
+        } else {
+          event.reply(CHANNEL.VERIFY_TOKEN_REPLY, false);
+        }
+        break;
+      }
+    case IPC_KEY.LOGOUT:
+      {
+        store.clear();
+        event.reply(CHANNEL.LOGOUT_REPLY, true);
       }
     default:
       break;
@@ -196,6 +227,10 @@ const createWindow = async () => {
 
 // initialize watcher
 const initializeWatcher = async (folder: string) => {
+  let token = store.get('user_token');
+  if (!token) {
+    return;
+  }
   if (!fs.existsSync(folder)) {
     mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
     return;
@@ -219,7 +254,10 @@ const initializeWatcher = async (folder: string) => {
 
 // cron job
 schedule.scheduleJob('*/5 * * * * *', async ()=> {
-  
+  let token = store.get('user_token');
+  if (!token) {
+    return;
+  }
   if (fs.existsSync(BMS_FOLDER_TEXT_FILE)) {
     let bmsFolder = fs.readFileSync(BMS_FOLDER_TEXT_FILE);
     if (!fs.existsSync(bmsFolder)) {

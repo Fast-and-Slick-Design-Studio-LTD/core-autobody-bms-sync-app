@@ -10,7 +10,7 @@ const FileHistory = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(()=>{
-    window.electron.ipcRenderer.sendMessage('ipc-example', [IPC_KEY.GET_FILE_HISTORY]);
+    window.electron.ipcRenderer.sendMessage('ipc-send', [IPC_KEY.GET_FILE_HISTORY]);
     window.electron.ipcRenderer.on(CHANNEL.FILE_HISTORY_REPLY, (_items: any) => {
       setItems(_items.sort((a: any, b:any)=>{
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();

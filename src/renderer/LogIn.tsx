@@ -1,4 +1,4 @@
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FormControl,
@@ -13,6 +13,7 @@ import {
   Flex
 } from '@chakra-ui/react'
 import { CHANNEL, IPC_KEY } from "../keys";
+import { useToast } from '@chakra-ui/react'
 
 interface FormProps {
   email: string;
@@ -26,18 +27,51 @@ const defaultFormVals = {
 
 const Login : React.FC = (props) => {
   const [formValue, setFormValue] = useState<FormProps>(defaultFormVals);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [verifying, setVerifying] = useState<boolean>(true);
   const navigate = useNavigate();
+  const toast = useToast();
+
+  useEffect(()=>{
+    window.electron.ipcRenderer.sendMessage('ipc-send', [IPC_KEY.VERIFY_TOKEN_REQUEST]);
+    window.electron.ipcRenderer.once(CHANNEL.VERIFY_TOKEN_REPLY, (res: any)=>{
+      if (res) {
+        setVerifying(false);
+        navigate('ChangeFolder');
+      } else {
+        setVerifying(true);
+      }
+    });
+  }, []);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormValue((_prevFormValue)=>{ return {..._prevFormValue, [e.target.name]: e.target.value}});
   }
 
   const handleSubmit = (event: any) => {
-    // event.preventDefault();
-    // navigate('ChangeFolder');
-    window.electron.ipcRenderer.sendMessage('ipc-example', [IPC_KEY.LOGIN_REQUEST]);
-    window.electron.ipcRenderer.on(CHANNEL.LOGIN_REPLY, (res)=>{
-      
+    event.preventDefault();
+    setIsLoading(true);
+    window.electron.ipcRenderer.sendMessage('ipc-send', [IPC_KEY.LOGIN_REQUEST, event.target.email.value, event.target.password.value]);
+    window.electron.ipcRenderer.once(CHANNEL.LOGIN_REPLY, (res: any)=>{
+      setIsLoading(false);
+      if (!res) {
+        toast({
+          title: 'Authenticate',
+          description: "Login Failed",
+          status: 'error',
+          duration: 2000,
+          isClosable: true,
+        })
+      } else {
+        toast({
+          title: 'Authenticate',
+          description: res.message,
+          status: 'success',
+          duration: 2000,
+          isClosable: true,
+        })
+        navigate('ChangeFolder');
+      }
     });
     return false;
   }
@@ -71,6 +105,8 @@ const Login : React.FC = (props) => {
                 mt={4}
                 colorScheme='teal'
                 type='submit'
+                isLoading={verifying || isLoading}
+                loadingText={verifying ? 'Verifying' : 'Submitting'}
               >
                 Submit
               </Button>

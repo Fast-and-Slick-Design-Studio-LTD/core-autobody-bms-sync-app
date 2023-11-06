@@ -9,11 +9,11 @@ const ChangeFolder = () => {
   const [folder, setFolder] = useState('');
 
   const openFolder = ()=>{
-    window.electron.ipcRenderer.sendMessage('ipc-example', [IPC_KEY.OPEN_FOLDER])
+    window.electron.ipcRenderer.sendMessage('ipc-send', [IPC_KEY.OPEN_FOLDER])
   }
 
   useEffect(() => {
-    window.electron.ipcRenderer.sendMessage('ipc-example', [IPC_KEY.GET_BMS_FOLDER]);
+    window.electron.ipcRenderer.sendMessage('ipc-send', [IPC_KEY.GET_BMS_FOLDER]);
     window.electron.ipcRenderer.on(CHANNEL.BMS_FOLDER_REPLY, (folder: any)=>{
       setFolder(folder);
     })

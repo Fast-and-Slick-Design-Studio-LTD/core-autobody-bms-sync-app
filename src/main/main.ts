@@ -18,6 +18,7 @@ import chokidar from 'chokidar';
 import { getFileHistory, onAddNewBMS, onDelBMS, onUpdateBMS } from './bms';
 import fs from 'fs';
 import schedule from 'node-schedule';
+import { loginByPwd } from './auth';
 
 class AppUpdater {
   constructor() {
@@ -71,13 +72,19 @@ ipcMain.on('ipc-example', async (event, arg) => {
         break;
       }
     case IPC_KEY.CHECK_BMS_FOLDER:
-      if (fs.existsSync(BMS_FOLDER_TEXT_FILE)) {
-        let bmsFolder = fs.readFileSync(BMS_FOLDER_TEXT_FILE);
-        if (!fs.existsSync(bmsFolder)) {
-          mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
+      {
+        if (fs.existsSync(BMS_FOLDER_TEXT_FILE)) {
+          let bmsFolder = fs.readFileSync(BMS_FOLDER_TEXT_FILE);
+          if (!fs.existsSync(bmsFolder)) {
+            mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
+          }
         }
+        break;
       }
-      break;
+    case IPC_KEY.LOGIN_REQUEST:
+      {
+        let response: any = await loginByPwd(arg[1], arg[2]);
+      }
     default:
       break;
   }

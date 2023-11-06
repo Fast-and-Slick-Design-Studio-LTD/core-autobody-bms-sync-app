@@ -12,6 +12,7 @@ import {
   VStack,
   Flex
 } from '@chakra-ui/react'
+import { CHANNEL, IPC_KEY } from "../keys";
 
 interface FormProps {
   email: string;
@@ -32,8 +33,12 @@ const Login : React.FC = (props) => {
   }
 
   const handleSubmit = (event: any) => {
-    event.preventDefault();
-    navigate('ChangeFolder');
+    // event.preventDefault();
+    // navigate('ChangeFolder');
+    window.electron.ipcRenderer.sendMessage('ipc-example', [IPC_KEY.LOGIN_REQUEST]);
+    window.electron.ipcRenderer.on(CHANNEL.LOGIN_REPLY, (res)=>{
+      
+    });
     return false;
   }
 

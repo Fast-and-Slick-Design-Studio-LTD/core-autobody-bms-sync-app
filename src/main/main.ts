@@ -39,7 +39,7 @@ let mainWindow: BrowserWindow | null = null;
 let watcher: any = null;
 let tray: any = null;
 
-const BMS_FOLDER_TEXT_FILE = path.join(__dirname, 'bmsfolder.txt');
+// const BMS_FOLDER_TEXT_FILE = path.join(__dirname, 'bmsfolder.txt');
 const store = new Store();
 
 ipcMain.on('ipc-send', async (event, arg) => {
@@ -48,7 +48,7 @@ ipcMain.on('ipc-send', async (event, arg) => {
       {
         let dlgs: string[] = setSyncFolder();
         if(dlgs[0]) {
-          fs.writeFileSync(BMS_FOLDER_TEXT_FILE, dlgs[0]);
+          store.set('bms_folder', dlgs[0]);
           event.reply(CHANNEL.BMS_FOLDER_REPLY, [dlgs[0]]);
           // initialize watcher
           await initializeWatcher(dlgs[0]);
@@ -65,20 +65,20 @@ ipcMain.on('ipc-send', async (event, arg) => {
       }
     case IPC_KEY.GET_BMS_FOLDER:
       {
-        if (fs.existsSync(BMS_FOLDER_TEXT_FILE)) {
-          let bmsFolder = fs.readFileSync(BMS_FOLDER_TEXT_FILE);
+        let bmsFolder: any = store.get('bms_folder');
+        if (bmsFolder) {
           await initializeWatcher(bmsFolder.toString());
           event.reply(CHANNEL.BMS_FOLDER_REPLY, bmsFolder.toString());
-        }else{
+        } else {
           event.reply(CHANNEL.BMS_FOLDER_REPLY, 'Not Set');
         }
         break;
       }
     case IPC_KEY.CHECK_BMS_FOLDER:
       {
-        if (fs.existsSync(BMS_FOLDER_TEXT_FILE)) {
-          let bmsFolder = fs.readFileSync(BMS_FOLDER_TEXT_FILE);
-          if (!fs.existsSync(bmsFolder)) {
+        let bmsFolder: any = store.get('bms_folder');
+        if (bmsFolder) {
+          if (!fs.existsSync(bmsFolder.toString())) {
             mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
           }
         }
@@ -113,7 +113,7 @@ ipcMain.on('ipc-send', async (event, arg) => {
       }
     case IPC_KEY.LOGOUT:
       {
-        store.clear();
+        store.delete('user_token');
         event.reply(CHANNEL.LOGOUT_REPLY, true);
       }
     default:
@@ -141,7 +141,7 @@ const createTray = () => {
     {
       label: 'Show App',
       click: () => {
-        createWindow()
+        createWindow();
       }
     },
     {
@@ -258,9 +258,9 @@ schedule.scheduleJob('*/5 * * * * *', async ()=> {
   if (!token) {
     return;
   }
-  if (fs.existsSync(BMS_FOLDER_TEXT_FILE)) {
-    let bmsFolder = fs.readFileSync(BMS_FOLDER_TEXT_FILE);
-    if (!fs.existsSync(bmsFolder)) {
+  let bmsFolder: any = store.get('bms_folder');
+  if (bmsFolder) {
+    if (!fs.existsSync(bmsFolder.toString())) {
       mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
     }
   }
@@ -273,19 +273,35 @@ schedule.scheduleJob('*/5 * * * * *', async ()=> {
 app.on('window-all-closed', async () => {
   // Respect the OSX convention of having the application in memory even
   // after all windows have been closed
-  console.log('window-all-closed', process.platform);
   if (process.platform !== 'darwin') {
     // app.quit();
-    app.dock.hide();
+    // app.dock.hide();
+    mainWindow?.hide();
     if (watcher) {
       await (watcher as chokidar.FSWatcher).close();
     }
   } else {
-    app.dock.hide();
+    // app.dock.hide();
+    mainWindow?.hide();
   }
 });
 
-app
+  /** Prevent multiple instance running */
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  app.quit()
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    // Someone tried to run a second instance, we should focus our window.
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
+      mainWindow.focus();
+    }
+  })
+
+  app
   .whenReady()
   .then(() => {
     createWindow();
@@ -296,3 +312,5 @@ app
     });
   })
   .catch(console.log);
+}
+/** End multiple instance running */

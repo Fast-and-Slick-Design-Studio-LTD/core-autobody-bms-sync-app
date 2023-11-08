@@ -87,6 +87,7 @@ const Login : React.FC = (props) => {
               value={formValue.email}
               name="email"
               onChange={(e)=>handleChange(e)}
+              required
             />
           </FormControl>
           <FormControl>
@@ -96,6 +97,7 @@ const Login : React.FC = (props) => {
               value={formValue.password}
               name="password"
               onChange={(e)=>handleChange(e)}
+              required
             />
           </FormControl>
           <FormControl>

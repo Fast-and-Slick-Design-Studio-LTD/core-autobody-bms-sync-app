@@ -235,21 +235,39 @@ const initializeWatcher = async (folder: string) => {
     mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
     return;
   }
-  if (watcher) {
-    await (watcher as chokidar.FSWatcher).close();
-  }
-  watcher = chokidar.watch(folder, {
-    ignored: /(^|[\/\\])\../, // ignore dotfiles
-    persistent: true
-  });
-
-  watcher
-    .on('add', (_path: string)=> onAddNewBMS(_path))
-    .on('change', (_path: string)=> onUpdateBMS(_path))
-    .on('unlink', (_path: string)=> onDelBMS(_path))
-    .on('error', (error: string)=> {
-      mainWindow?.webContents.send('error', error);
+  if (!watcher) {
+    // await (watcher as chokidar.FSWatcher).close();
+    watcher = chokidar.watch(folder, {
+      ignored: /(^|[\/\\])\../, // ignore dotfiles
+      persistent: true
     });
+  
+    watcher
+      .on('add', (_path: string)=> onAddNewBMS(_path))
+      .on('change', (_path: string)=> onUpdateBMS(_path))
+      .on('unlink', (_path: string)=> onDelBMS(_path))
+      .on('error', (error: string)=> {
+        mainWindow?.webContents.send('error', error);
+      });
+  } else {
+    
+    let watched = watcher.getWatched();
+    console.log('previous watched ------');
+    console.log(watched);
+    if (!Object.keys(watched).includes(folder)) {
+      console.log('folder changed =========');
+      Object.keys(watched).forEach((watchfolder)=>{
+        console.log('watch folder ====', watchfolder)
+        watcher.unwatch(watchfolder);
+      })
+      watcher.add(folder);
+    }
+    watcher.add(folder);
+    watched = watcher.getWatched();
+    console.log('after watched ------');
+    console.log(watched);
+  }
+  
 }
 
 // cron job

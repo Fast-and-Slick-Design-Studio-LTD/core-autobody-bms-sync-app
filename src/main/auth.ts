@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-const core_autobody_base = "https://core-autobody-staging-da026c3517ad.herokuapp.com";
-// const core_autobody_base = "http://localhost:3000";
+// const core_autobody_base = "https://core-autobody-staging-da026c3517ad.herokuapp.com";
+const core_autobody_base = "http://localhost:3000";
 
 export const loginByPwd = async (email:string, password:string) => {
     return new Promise((resolve, reject) =>{

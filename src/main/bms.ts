@@ -1,59 +1,98 @@
 import axios from 'axios';
 import fs from 'fs';
 import FormData from 'form-data';
+import SqliteDB, { FileLog } from './sqlitedb';
+import hasha from 'hasha';
+import { getFileSize } from './util';
 
 const apiUploadUrl = "https://webhook.site/72b49f57-e259-4dbf-a07c-212230f9097b";
 const apiEndpointUrl = 'https://webhook.site/token/72b49f57-e259-4dbf-a07c-212230f9097b/requests';
 
-export function onAddNewBMS(path: string) {
-    console.log('onAddNewBMS ------------', path);
+export async function onAddNewBMS(path: string, callBack: Function) {
+  const hash = hasha.fromFileSync(path);
+  const size = await getFileSize(path);
+  let fileLog: FileLog = {
+    file_path: path,
+    file_hash: hash,
+    created_at: new Date().getTime(),
+    isUpdated: 'false',
+    size: size
+  }
+  const oldFiles: any[] = await SqliteDB.findFile(fileLog);
+  if (oldFiles.length != 0) {
     return;
-    const fileStream = fs.createReadStream(path)
-    const formData = new FormData();
-    formData.append('file', fileStream);
-    
-    axios.post(apiUploadUrl, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+  }
+
+  // uploading file
+  const fileStream = fs.createReadStream(path)
+  const formData = new FormData();
+  formData.append('file', fileStream);
+  axios.post(apiUploadUrl, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+  .then((response) => {
+    console.log('File uploaded successfully', response.data);
+    SqliteDB.addFileLog(fileLog).then((err: any)=> {
+      if (!err) {
+        console.log('addFileLog succeed');
+        callBack(fileLog);
+      } else {
+        console.log(err.message);
+      }
     })
-    .then((response) => {
-      console.log('File uploaded successfully', response.data);
-    })
-    .catch((error) => {
-      console.error('Error uploading file', error);
-    });
+  })
+  .catch((error) => {
+    console.error('Error uploading file', error);
+  });
 }
 
-export function onUpdateBMS(path: string) {
-    console.log('onUpdateBMS ------------', path);
+export async function onUpdateBMS(path: string, callBack: Function) {
+  const hash = hasha.fromFileSync(path);
+  const size = await getFileSize(path);
+  let fileLog: FileLog = {
+    file_path: path,
+    file_hash: hash,
+    created_at: new Date().getTime(),
+    isUpdated: 'true',
+    size: size
+  }
+  const oldFiles: any[] = await SqliteDB.findFile(fileLog);
+  if (oldFiles.length != 0) {
+    console.log('Already synced');
     return;
-    const fileStream = fs.createReadStream(path)
-    const formData = new FormData();
-    formData.append('file', fileStream);
-    formData.append('isUpdate', 'true');
+  }
+  const fileStream = fs.createReadStream(path)
+  const formData = new FormData();
+  formData.append('file', fileStream);
+  formData.append('isUpdate', 'true');
     
-    axios.post(apiUploadUrl, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+  axios.post(apiUploadUrl, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  })
+  .then((response) => {
+    console.log('File uploaded successfully', response.data);
+    SqliteDB.addFileLog(fileLog).then((err: any)=> {
+      if (!err) {
+        console.log('addFileLog succeed on update');
+        callBack(fileLog);
+      } else {
+        console.log(err.message);
+      }
     })
-    .then((response) => {
-      console.log('File uploaded successfully', response.data);
-    })
-    .catch((error) => {
-      console.error('Error uploading file', error);
-    });
+  })
+  .catch((error) => {
+    console.error('Error uploading file', error);
+  });
 }
 
 export function onDelBMS(path: string) {
     console.log(`onDelBMS ------- ${path}`);
 }
 
-export function getFileHistory() {
-    return new Promise((resolve, reject) =>{
-        axios.get(apiEndpointUrl)
-            .then(res=>resolve(res.data))
-            .catch(err=> reject(err))
-    })
+export async function getFileHistory() {
+    return await SqliteDB.getFileLogs();
 }

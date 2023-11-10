@@ -2,6 +2,7 @@
 import { URL } from 'url';
 import path from 'path';
 import { dialog } from 'electron';
+import Fs from 'fs/promises'
 
 export function resolveHtmlPath(htmlFileName: string) {
   console.log('node env ===================', process.env.NODE_ENV);
@@ -19,4 +20,9 @@ export function setSyncFolder() {
   const dlg: string[] = dialog.showOpenDialogSync({ properties: ['openDirectory'] }) ?? [];
   console.log(dlg);
   return dlg;
+}
+
+export async function getFileSize(filePath: string) {
+  const stats = await Fs.stat(filePath);
+  return stats.size
 }

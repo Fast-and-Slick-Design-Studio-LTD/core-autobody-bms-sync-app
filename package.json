@@ -96,20 +96,25 @@
     }
   },
   "dependencies": {
+    "@chakra-ui/icons": "^2.1.1",
     "@chakra-ui/react": "^2.8.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
+    "@tanstack/react-table": "^8.10.7",
     "axios": "^1.6.0",
     "chokidar": "^3.5.3",
+    "dayjs": "^1.11.10",
     "electron-debug": "^3.2.0",
     "electron-log": "^4.4.8",
     "electron-store": "^8.1.0",
     "electron-updater": "^6.1.4",
     "framer-motion": "^10.16.4",
+    "hasha": "^5.2.2",
     "node-schedule": "^2.1.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.16.0"
+    "react-router-dom": "^6.16.0",
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "@electron/notarize": "^2.1.0",
@@ -254,7 +259,8 @@
     "patterns": [
       "!**/**",
       "src/main/**",
-      "!src/main/*.txt"
+      "!src/main/*.txt",
+      "!src/main/*.db"
     ],
     "logLevel": "quiet"
   }

@@ -12,6 +12,7 @@ export enum IPC_KEY {
 
 export enum CHANNEL {
     FILE_HISTORY_REPLY = "file_history_reply",
+    FILE_NEW_HISTORY_REPLY = "file_new_history_reply",
     BMS_FOLDER_REPLY = "bms_folder_reply",
     LOGIN_REPLY = "login_reply",
     LOGOUT_REPLY = "logout_reply",

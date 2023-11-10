@@ -21,6 +21,7 @@ import schedule from 'node-schedule';
 import Store from 'electron-store';
 
 import { loginByPwd, verifyToken } from './auth';
+import SqliteDB, { FileLog } from './sqlitedb';
 
 class AppUpdater {
   constructor() {
@@ -60,7 +61,7 @@ ipcMain.on('ipc-send', async (event, arg) => {
     case IPC_KEY.GET_FILE_HISTORY:
       {
         let fileData: any = await getFileHistory();
-        event.reply(CHANNEL.FILE_HISTORY_REPLY, fileData.data)
+        event.reply(CHANNEL.FILE_HISTORY_REPLY, fileData)
         break;
       }
     case IPC_KEY.GET_BMS_FOLDER:
@@ -103,7 +104,6 @@ ipcMain.on('ipc-send', async (event, arg) => {
           break;
         }
         let response: any = await verifyToken(token);
-        console.log(IPC_KEY.VERIFY_TOKEN_REQUEST, response);
         if (response.success) {
           event.reply(CHANNEL.VERIFY_TOKEN_REPLY, true);
         } else {
@@ -220,6 +220,9 @@ const createWindow = async () => {
     return { action: 'deny' };
   });
 
+  // initialize sqlitedb
+  SqliteDB.initDB(path.join(__dirname, 'coreauto.db'));
+
   // Remove this if your app does not use auto updates
   // eslint-disable-next-line
   new AppUpdater();
@@ -243,29 +246,24 @@ const initializeWatcher = async (folder: string) => {
     });
   
     watcher
-      .on('add', (_path: string)=> onAddNewBMS(_path))
-      .on('change', (_path: string)=> onUpdateBMS(_path))
+      .on('add', (_path: string)=> onAddNewBMS(_path, (fileLog: FileLog) => {
+        mainWindow?.webContents.send(CHANNEL.FILE_NEW_HISTORY_REPLY, fileLog)
+      }))
+      .on('change', (_path: string)=> onUpdateBMS(_path, (fileLog: FileLog) => {
+        mainWindow?.webContents.send(CHANNEL.FILE_NEW_HISTORY_REPLY, fileLog)
+      }))
       .on('unlink', (_path: string)=> onDelBMS(_path))
       .on('error', (error: string)=> {
         mainWindow?.webContents.send('error', error);
       });
   } else {
-    
     let watched = watcher.getWatched();
-    console.log('previous watched ------');
-    console.log(watched);
     if (!Object.keys(watched).includes(folder)) {
-      console.log('folder changed =========');
       Object.keys(watched).forEach((watchfolder)=>{
-        console.log('watch folder ====', watchfolder)
         watcher.unwatch(watchfolder);
       })
       watcher.add(folder);
     }
-    watcher.add(folder);
-    watched = watcher.getWatched();
-    console.log('after watched ------');
-    console.log(watched);
   }
   
 }
@@ -295,14 +293,21 @@ app.on('window-all-closed', async () => {
     // app.quit();
     // app.dock.hide();
     mainWindow?.hide();
-    if (watcher) {
-      await (watcher as chokidar.FSWatcher).close();
-    }
   } else {
     // app.dock.hide();
     mainWindow?.hide();
   }
 });
+
+app.on('before-quit', () => {
+  SqliteDB.db.close((err: any) => {
+    if (err) {
+      console.error(err.message);
+    } else {
+      console.log('Database connection closed.');
+    }
+  })
+})
 
   /** Prevent multiple instance running */
 const gotTheLock = app.requestSingleInstanceLock();

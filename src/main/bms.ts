@@ -33,13 +33,10 @@ export async function onAddNewBMS(path: string, callBack: Function) {
     },
   })
   .then((response) => {
-    console.log('File uploaded successfully', response.data);
     SqliteDB.addFileLog(fileLog).then((err: any)=> {
       if (!err) {
-        console.log('addFileLog succeed');
         callBack(fileLog);
       } else {
-        console.log(err.message);
       }
     })
   })
@@ -60,7 +57,6 @@ export async function onUpdateBMS(path: string, callBack: Function) {
   }
   const oldFiles: any[] = await SqliteDB.findFile(fileLog);
   if (oldFiles.length != 0) {
-    console.log('Already synced');
     return;
   }
   const fileStream = fs.createReadStream(path)
@@ -74,13 +70,10 @@ export async function onUpdateBMS(path: string, callBack: Function) {
     },
   })
   .then((response) => {
-    console.log('File uploaded successfully', response.data);
     SqliteDB.addFileLog(fileLog).then((err: any)=> {
       if (!err) {
-        console.log('addFileLog succeed on update');
         callBack(fileLog);
       } else {
-        console.log(err.message);
       }
     })
   })

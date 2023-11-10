@@ -5,7 +5,6 @@ import { dialog } from 'electron';
 import Fs from 'fs/promises'
 
 export function resolveHtmlPath(htmlFileName: string) {
-  console.log('node env ===================', process.env.NODE_ENV);
   if (process.env.NODE_ENV === 'development') {
     const port = process.env.PORT || 1212;
     const url = new URL(`http://localhost:${port}`);
@@ -18,7 +17,6 @@ export function resolveHtmlPath(htmlFileName: string) {
 
 export function setSyncFolder() {
   const dlg: string[] = dialog.showOpenDialogSync({ properties: ['openDirectory'] }) ?? [];
-  console.log(dlg);
   return dlg;
 }
 

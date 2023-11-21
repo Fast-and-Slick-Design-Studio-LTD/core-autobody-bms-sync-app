@@ -5,8 +5,9 @@ import SqliteDB, { FileLog } from './sqlitedb';
 import hasha from 'hasha';
 import { getFileSize } from './util';
 
-const apiUploadUrl = "https://webhook.site/72b49f57-e259-4dbf-a07c-212230f9097b";
-const apiEndpointUrl = 'https://webhook.site/token/72b49f57-e259-4dbf-a07c-212230f9097b/requests';
+// const apiUploadUrl = "https://webhook.site/72b49f57-e259-4dbf-a07c-212230f9097b";
+const apiUploadUrl = "https://core-autobody-staging-da026c3517ad.herokuapp.com/api/bms/upload";
+// const apiUploadUrl = "http://localhost:3000/api/bms/upload"; // for local test
 
 export async function onAddNewBMS(path: string, callBack: Function) {
   const hash = hasha.fromFileSync(path);

@@ -8,17 +8,25 @@
  * When running `npm run build` or `npm run build:main`, this file is compiled to
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
-import path from 'path';
-import { app, BrowserWindow, shell, ipcMain, nativeImage, Tray, Menu } from 'electron';
-import { autoUpdater } from 'electron-updater';
-import log from 'electron-log';
-import { resolveHtmlPath, setSyncFolder } from './util';
-import { CHANNEL, IPC_KEY } from '../keys';
 import chokidar from 'chokidar';
-import { getFileHistory, onAddNewBMS, onDelBMS, onUpdateBMS } from './bms';
+import {
+  BrowserWindow,
+  Menu,
+  Tray,
+  app,
+  ipcMain,
+  nativeImage,
+  shell,
+} from 'electron';
+import log from 'electron-log';
+import Store from 'electron-store';
+import { autoUpdater } from 'electron-updater';
 import fs from 'fs';
 import schedule from 'node-schedule';
-import Store from 'electron-store';
+import path from 'path';
+import { CHANNEL, IPC_KEY } from '../keys';
+import { getFileHistory, onAddNewBMS, onDelBMS, onUpdateBMS } from './bms';
+import { resolveHtmlPath, setSyncFolder } from './util';
 
 import { loginByPwd, verifyToken } from './auth';
 import SqliteDB, { FileLog } from './sqlitedb';
@@ -32,9 +40,8 @@ class AppUpdater {
 }
 
 const RESOURCES_PATH = app.isPackaged
-    ? path.join(process.resourcesPath, 'assets')
-    : path.join(__dirname, '../../assets');
-
+  ? path.join(process.resourcesPath, 'assets')
+  : path.join(__dirname, '../../assets');
 
 let mainWindow: BrowserWindow | null = null;
 let watcher: any = null;
@@ -44,78 +51,73 @@ let tray: any = null;
 const store = new Store();
 
 ipcMain.on('ipc-send', async (event, arg) => {
-  switch(arg[0]) {
-    case IPC_KEY.OPEN_FOLDER:
-      {
-        let dlgs: string[] = setSyncFolder();
-        if(dlgs[0]) {
-          store.set('bms_folder', dlgs[0]);
-          event.reply(CHANNEL.BMS_FOLDER_REPLY, [dlgs[0]]);
-          // initialize watcher
-          await initializeWatcher(dlgs[0]);
-        } else {
-          event.reply('ipc-send', IPC_KEY.OPEN_FOLDER_CANCEL);
+  switch (arg[0]) {
+    case IPC_KEY.OPEN_FOLDER: {
+      let dlgs: string[] = setSyncFolder();
+      if (dlgs[0]) {
+        store.set('bms_folder', dlgs[0]);
+        event.reply(CHANNEL.BMS_FOLDER_REPLY, [dlgs[0]]);
+        // initialize watcher
+        await initializeWatcher(dlgs[0]);
+      } else {
+        event.reply('ipc-send', IPC_KEY.OPEN_FOLDER_CANCEL);
+      }
+      break;
+    }
+    case IPC_KEY.GET_FILE_HISTORY: {
+      let fileData: any = await getFileHistory();
+      event.reply(CHANNEL.FILE_HISTORY_REPLY, fileData);
+      break;
+    }
+    case IPC_KEY.GET_BMS_FOLDER: {
+      let bmsFolder: any = store.get('bms_folder');
+      if (bmsFolder) {
+        await initializeWatcher(bmsFolder.toString());
+        event.reply(CHANNEL.BMS_FOLDER_REPLY, bmsFolder.toString());
+      } else {
+        event.reply(CHANNEL.BMS_FOLDER_REPLY, 'Not Set');
+      }
+      break;
+    }
+    case IPC_KEY.CHECK_BMS_FOLDER: {
+      let bmsFolder: any = store.get('bms_folder');
+      if (bmsFolder) {
+        if (!fs.existsSync(bmsFolder.toString())) {
+          mainWindow?.webContents.executeJavaScript(
+            'alert("BMS folder has been removed")'
+          );
         }
+      }
+      break;
+    }
+    case IPC_KEY.LOGIN_REQUEST: {
+      let response: any = await loginByPwd(arg[1], arg[2]);
+      if (response.success) {
+        store.set('user_token', response.token);
+        event.reply(CHANNEL.LOGIN_REPLY, response);
+      } else {
+        event.reply(CHANNEL.LOGIN_REPLY, false);
+      }
+      break;
+    }
+    case IPC_KEY.VERIFY_TOKEN_REQUEST: {
+      let token = store.get('user_token');
+      if (!token) {
+        event.reply(CHANNEL.VERIFY_TOKEN_REPLY, false);
         break;
       }
-    case IPC_KEY.GET_FILE_HISTORY:
-      {
-        let fileData: any = await getFileHistory();
-        event.reply(CHANNEL.FILE_HISTORY_REPLY, fileData)
-        break;
+      let response: any = await verifyToken(token);
+      if (response.success) {
+        event.reply(CHANNEL.VERIFY_TOKEN_REPLY, true);
+      } else {
+        event.reply(CHANNEL.VERIFY_TOKEN_REPLY, false);
       }
-    case IPC_KEY.GET_BMS_FOLDER:
-      {
-        let bmsFolder: any = store.get('bms_folder');
-        if (bmsFolder) {
-          await initializeWatcher(bmsFolder.toString());
-          event.reply(CHANNEL.BMS_FOLDER_REPLY, bmsFolder.toString());
-        } else {
-          event.reply(CHANNEL.BMS_FOLDER_REPLY, 'Not Set');
-        }
-        break;
-      }
-    case IPC_KEY.CHECK_BMS_FOLDER:
-      {
-        let bmsFolder: any = store.get('bms_folder');
-        if (bmsFolder) {
-          if (!fs.existsSync(bmsFolder.toString())) {
-            mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
-          }
-        }
-        break;
-      }
-    case IPC_KEY.LOGIN_REQUEST:
-      {
-        let response: any = await loginByPwd(arg[1], arg[2]);
-        if(response.success) {
-          store.set('user_token', response.token);
-          event.reply(CHANNEL.LOGIN_REPLY, response)
-        } else {
-          event.reply(CHANNEL.LOGIN_REPLY, false)
-        }
-        break;
-      }
-    case IPC_KEY.VERIFY_TOKEN_REQUEST:
-      {
-        let token = store.get('user_token');
-        if (!token) {
-          event.reply(CHANNEL.VERIFY_TOKEN_REPLY, false);
-          break;
-        }
-        let response: any = await verifyToken(token);
-        if (response.success) {
-          event.reply(CHANNEL.VERIFY_TOKEN_REPLY, true);
-        } else {
-          event.reply(CHANNEL.VERIFY_TOKEN_REPLY, false);
-        }
-        break;
-      }
-    case IPC_KEY.LOGOUT:
-      {
-        store.delete('user_token');
-        event.reply(CHANNEL.LOGOUT_REPLY, true);
-      }
+      break;
+    }
+    case IPC_KEY.LOGOUT: {
+      store.delete('user_token');
+      event.reply(CHANNEL.LOGOUT_REPLY, true);
+    }
     default:
       break;
   }
@@ -134,26 +136,26 @@ if (isDebug) {
 }
 
 const createTray = () => {
-  const icon = getAssetPath('icon.png') // required.
-  const trayicon = nativeImage.createFromPath(icon)
-  tray = new Tray(trayicon.resize({ width: 16 }))
+  const icon = getAssetPath('icon.png'); // required.
+  const trayicon = nativeImage.createFromPath(icon);
+  tray = new Tray(trayicon.resize({ width: 16 }));
   const contextMenu = Menu.buildFromTemplate([
     {
       label: 'Show App',
       click: () => {
         createWindow();
-      }
+      },
     },
     {
       label: 'Quit',
       click: () => {
-        app.quit() // actually quit the app.
-      }
+        app.quit(); // actually quit the app.
+      },
     },
-  ])
+  ]);
 
-  tray.setContextMenu(contextMenu)
-}
+  tray.setContextMenu(contextMenu);
+};
 
 const installExtensions = async () => {
   const installer = require('electron-devtools-installer');
@@ -163,14 +165,13 @@ const installExtensions = async () => {
   return installer
     .default(
       extensions.map((name) => installer[name]),
-      forceDownload,
+      forceDownload
     )
     .catch(console.log);
 };
 
-
 const getAssetPath = (...paths: string[]): string => {
-    return path.join(RESOURCES_PATH, ...paths);
+  return path.join(RESOURCES_PATH, ...paths);
 };
 
 const createWindow = async () => {
@@ -235,41 +236,46 @@ const initializeWatcher = async (folder: string) => {
     return;
   }
   if (!fs.existsSync(folder)) {
-    mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
+    mainWindow?.webContents.executeJavaScript(
+      'alert("BMS folder has been removed")'
+    );
     return;
   }
   if (!watcher) {
     // await (watcher as chokidar.FSWatcher).close();
     watcher = chokidar.watch(folder, {
       ignored: /(^|[\/\\])\../, // ignore dotfiles
-      persistent: true
+      persistent: true,
     });
-  
+
     watcher
-      .on('add', (_path: string)=> onAddNewBMS(_path, (fileLog: FileLog) => {
-        mainWindow?.webContents.send(CHANNEL.FILE_NEW_HISTORY_REPLY, fileLog)
-      }))
-      .on('change', (_path: string)=> onUpdateBMS(_path, (fileLog: FileLog) => {
-        mainWindow?.webContents.send(CHANNEL.FILE_NEW_HISTORY_REPLY, fileLog)
-      }))
-      .on('unlink', (_path: string)=> onDelBMS(_path))
-      .on('error', (error: string)=> {
+      .on('add', (_path: string) =>
+        onAddNewBMS(_path, (fileLog: FileLog) => {
+          mainWindow?.webContents.send(CHANNEL.FILE_NEW_HISTORY_REPLY, fileLog);
+        })
+      )
+      .on('change', (_path: string) =>
+        onUpdateBMS(_path, (fileLog: FileLog) => {
+          mainWindow?.webContents.send(CHANNEL.FILE_NEW_HISTORY_REPLY, fileLog);
+        })
+      )
+      .on('unlink', (_path: string) => onDelBMS(_path))
+      .on('error', (error: string) => {
         mainWindow?.webContents.send('error', error);
       });
   } else {
     let watched = watcher.getWatched();
     if (!Object.keys(watched).includes(folder)) {
-      Object.keys(watched).forEach((watchfolder)=>{
+      Object.keys(watched).forEach((watchfolder) => {
         watcher.unwatch(watchfolder);
-      })
+      });
       watcher.add(folder);
     }
   }
-  
-}
+};
 
 // cron job
-schedule.scheduleJob('*/5 * * * * *', async ()=> {
+schedule.scheduleJob('*/5 * * * * *', async () => {
   let token = store.get('user_token');
   if (!token) {
     return;
@@ -277,10 +283,12 @@ schedule.scheduleJob('*/5 * * * * *', async ()=> {
   let bmsFolder: any = store.get('bms_folder');
   if (bmsFolder) {
     if (!fs.existsSync(bmsFolder.toString())) {
-      mainWindow?.webContents.executeJavaScript('alert("BMS folder has been removed")');
+      mainWindow?.webContents.executeJavaScript(
+        'alert("BMS folder has been removed")'
+      );
     }
   }
-})
+});
 
 /**
  * Add event listeners...
@@ -306,13 +314,13 @@ app.on('before-quit', () => {
     } else {
       console.log('Database connection closed.');
     }
-  })
-})
+  });
+});
 
-  /** Prevent multiple instance running */
+/** Prevent multiple instance running */
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
-  app.quit()
+  app.quit();
 } else {
   app.on('second-instance', (event, commandLine, workingDirectory) => {
     // Someone tried to run a second instance, we should focus our window.
@@ -322,18 +330,18 @@ if (!gotTheLock) {
       }
       mainWindow.focus();
     }
-  })
+  });
 
   app
-  .whenReady()
-  .then(() => {
-    createWindow();
-    app.on('activate', () => {
-      // On macOS it's common to re-create a window in the app when the
-      // dock icon is clicked and there are no other windows open.
-      if (mainWindow === null) createWindow();
-    });
-  })
-  .catch(console.log);
+    .whenReady()
+    .then(() => {
+      createWindow();
+      app.on('activate', () => {
+        // On macOS it's common to re-create a window in the app when the
+        // dock icon is clicked and there are no other windows open.
+        if (mainWindow === null) createWindow();
+      });
+    })
+    .catch(console.log);
 }
 /** End multiple instance running */

@@ -1,12 +1,7 @@
 // eslint-disable-next-line prettier/prettier
-import {
-  app,
-  Menu,
-  BrowserWindow,
-  MenuItemConstructorOptions,
-} from 'electron';
-import { setSyncFolder } from './util';
+import { BrowserWindow, Menu, MenuItemConstructorOptions, app } from 'electron';
 import { IPC_KEY } from '../keys';
+import { setSyncFolder } from './util';
 
 interface DarwinMenuItemConstructorOptions extends MenuItemConstructorOptions {
   selector?: string;
@@ -116,7 +111,7 @@ export default class MenuBuilder {
         label: '&Exit',
         accelerator: 'Ctrl+X',
         click: () => {
-            this.mainWindow.close();
+          this.mainWindow.close();
         },
       },
     ];
@@ -135,6 +130,6 @@ export default class MenuBuilder {
 
   // eslint-disable-next-line class-methods-use-this
   logOut() {
-    this.mainWindow.webContents.send('ipc-send', [IPC_KEY.LOGOUT])
+    this.mainWindow.webContents.send('ipc-send', [IPC_KEY.LOGOUT]);
   }
 }

@@ -1,8 +1,8 @@
 /* eslint import/prefer-default-export: off */
-import { URL } from 'url';
-import path from 'path';
 import { dialog } from 'electron';
-import Fs from 'fs/promises'
+import Fs from 'fs/promises';
+import path from 'path';
+import { URL } from 'url';
 
 export function resolveHtmlPath(htmlFileName: string) {
   if (process.env.NODE_ENV === 'development') {
@@ -14,13 +14,13 @@ export function resolveHtmlPath(htmlFileName: string) {
   return `file://${path.resolve(__dirname, '../renderer/', htmlFileName)}`;
 }
 
-
 export function setSyncFolder() {
-  const dlg: string[] = dialog.showOpenDialogSync({ properties: ['openDirectory'] }) ?? [];
+  const dlg: string[] =
+    dialog.showOpenDialogSync({ properties: ['openDirectory'] }) ?? [];
   return dlg;
 }
 
 export async function getFileSize(filePath: string) {
   const stats = await Fs.stat(filePath);
-  return stats.size
+  return stats.size;
 }

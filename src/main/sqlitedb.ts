@@ -12,6 +12,7 @@ export interface FileLog {
 
 export default class SqliteDB {
   static db: any;
+  constructor() {}
 
   static async initDB(dbPath: string) {
     this.db = new sqlite3.Database(dbPath);

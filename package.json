@@ -240,7 +240,8 @@
       "output": "release/build"
     },
     "extraResources": [
-      "./assets/**"
+      "./assets/**",
+      "./src/main/coreauto.db"
     ],
     "publish": {
       "provider": "github",

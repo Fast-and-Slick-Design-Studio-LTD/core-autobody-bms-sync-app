@@ -221,8 +221,15 @@ const createWindow = async () => {
     return { action: 'deny' };
   });
 
+  const isBuild = process.env.NODE_ENV === 'production';
+  const pathToDbFile = path.join(
+    __dirname,
+    isBuild ? '../../../' : '../../',
+    './src/main/coreauto.db'
+  );
+
   // initialize sqlitedb
-  SqliteDB.initDB(path.join(__dirname, 'coreauto.db'));
+  SqliteDB.initDB(pathToDbFile);
 
   // Remove this if your app does not use auto updates
   // eslint-disable-next-line
